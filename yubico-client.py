@@ -11,19 +11,19 @@ from urllib.parse import urlencode
 import requests
 
 
-def _bytes(s):
-    if isinstance(s, str):
-        return s.encode('utf-8')
-    elif isinstance(s, bytes):
-        return s
-    else:
-        raise TypeError(f"Invalid argument {s}")
-
-
 class Yubico(object):
     def __init__(self, client_id, secret_key):
         self.client_id = client_id
         self.secret_key = base64.b64decode(secret_key.encode('ascii'))
+
+    @staticmethod
+    def _bytes(s):
+        if isinstance(s, str):
+            return s.encode('utf-8')
+        elif isinstance(s, bytes):
+            return s
+        else:
+            raise TypeError(f"Invalid argument {s}")
 
     def __query__(self, otp, nonce):
         data = [
@@ -42,7 +42,7 @@ class Yubico(object):
         pairs_sorted = sorted(pairs)
         pairs_string = '&'.join(['='.join(pair) for pair in pairs_sorted])
 
-        digest = hmac.new(self.secret_key, _bytes(pairs_string), hashlib.sha1).digest()
+        digest = hmac.new(self.secret_key, self._bytes(pairs_string), hashlib.sha1).digest()
         signature = base64.b64encode(digest).decode('utf-8')
 
         return signature
@@ -64,8 +64,8 @@ class Yubico(object):
         return status[0] if status else None
 
     def verify(self, otp):
-        rand_bytes = _bytes(os.urandom(30))
-        nonce = base64.b64encode(rand_bytes, _bytes('xz'))[:25].decode('utf-8')
+        rand_bytes = self._bytes(os.urandom(30))
+        nonce = base64.b64encode(rand_bytes, self._bytes('xz'))[:25].decode('utf-8')
         query = self.__query__(otp, nonce)
         response = self.__request__(query)
         status = self.__verify__(response)
